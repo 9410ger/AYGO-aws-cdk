@@ -16,30 +16,34 @@ public class AwsCdkStack extends Stack {
 
     public AwsCdkStack(final Construct scope, final String id, final StackProps props) {
         super(scope, id, props);
-        instanceEC2Machine();
+
+        for(int i = 0; i < 3; i++){
+            instanceEC2Machine(i);
+        }
+
     }
 
-    public IVpc createVpc(){
+    public IVpc createVpc(String index){
 
         SubnetAttributes subnetAttributes = SubnetAttributes.builder()
                 .availabilityZone("us-east-1")
                 .subnetId("subnet-0d07db45adf958803").build();
 
-        ISubnet subnet = Subnet.fromSubnetAttributes(this,"my-subnet",subnetAttributes);
+        ISubnet subnet = Subnet.fromSubnetAttributes(this,"my-subnet" + index,subnetAttributes);
 
         List<ISubnet> subnetList = new ArrayList<>();
         subnetList.add(subnet);
         VpcLookupOptions vpcLookupOptions = VpcLookupOptions.builder()
                 .vpcId("vpc-03689d268ef2286b0").build();
-        IVpc vpc = Vpc.fromLookup(this,"my-vpc",vpcLookupOptions);
+        IVpc vpc = Vpc.fromLookup(this,"my-vpc" + index,vpcLookupOptions);
         SubnetSelection subnetSelection = SubnetSelection.builder()
                 .subnets(subnetList).build();
         vpc.selectSubnets(subnetSelection);
         return vpc;
     }
 
-    public ISecurityGroup createSecurityGroup(IVpc vpc){
-        return SecurityGroup.fromLookup(this,"my-sg-cli","sg-0a29ac6bb75d0fc75");
+    public ISecurityGroup createSecurityGroup(IVpc vpc, String index){
+        return SecurityGroup.fromLookup(this,"my-sg-cli" + index,"sg-0a29ac6bb75d0fc75");
 
     }
     
@@ -47,16 +51,17 @@ public class AwsCdkStack extends Stack {
         return MachineImage.latestAmazonLinux();
     }
 
-    public IRole createRole(){
+    public IRole createRole(String index){
         String roleArn = "arn:aws:iam::972353547499:role/EMR_EC2_DefaultRole";
-        return Role.fromRoleArn(this,"my-role",roleArn);
+        return Role.fromRoleArn(this,"my-role" + index,roleArn);
     }
 
-    public void instanceEC2Machine(){
-        IVpc iVpc = createVpc();
-        ISecurityGroup securityGroup = createSecurityGroup(iVpc);
+    public void instanceEC2Machine(int index){
+        String indexString = Integer.toString(index);
+        IVpc iVpc = createVpc(indexString);
+        ISecurityGroup securityGroup = createSecurityGroup(iVpc,indexString);
         IMachineImage iMachineImage = createMachineImage();
-        IRole role = createRole();
+        IRole role = createRole(indexString);
         InstanceType instanceType = new InstanceType("t2.micro");
 
 
@@ -68,7 +73,7 @@ public class AwsCdkStack extends Stack {
                 .vpc(iVpc)
                 .role(role)
                 .build();
-        Instance instance = new Instance(this,"my-vp",instanceProps);
+        Instance instance = new Instance(this,"my-vp" + index,instanceProps);
         instance.addUserData("sudo yum update -y");
         instance.addUserData("sudo yum install git -y");
         instance.addUserData("sudo yum install docker -y");
